@@ -187,7 +187,8 @@ class WorkflowBaseLoader(object):
         if file_name is None:
             return
 
-        is_hdf = "hdf" in os.path.splitext(file_name)[1].lower()
+        file_ext = os.path.splitext(file_name)[1].lower()
+        is_hdf = "hdf" in file_ext or "h5" in file_ext
 
         if file_name not in self._file_format_settings and not is_hdf:
             self._file_format_settings[file_name] = copy.copy(DEFAULT_PANDAS_TSV_SETTINGS)
