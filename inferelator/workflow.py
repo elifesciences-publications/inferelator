@@ -27,6 +27,7 @@ from inferelator.regression.base_regression import RegressionWorkflow
 from inferelator.postprocessing.results_processor import ResultsProcessor
 
 DEFAULT_PANDAS_TSV_SETTINGS = dict(sep="\t", index_col=0, header=0)
+DEFAULT_SCANPY_HDF_SETTINGS = dict(is_hdf=True, sparse=False)
 
 
 class WorkflowBaseLoader(object):
@@ -186,11 +187,16 @@ class WorkflowBaseLoader(object):
         if file_name is None:
             return
 
-        if file_name not in self._file_format_settings:
+        is_hdf = "hdf" in os.path.splitext(file_name)[1].lower()
+
+        if file_name not in self._file_format_settings and not is_hdf:
             self._file_format_settings[file_name] = copy.copy(DEFAULT_PANDAS_TSV_SETTINGS)
+        elif file_name not in self._file_format_settings and is_hdf:
+            utils.Debug.vprint("Loading file {f} as a 10x HDF file with Scanpy".format(f=file_name), level=0)
+            self._file_format_settings[file_name] = copy.copy(DEFAULT_SCANPY_HDF_SETTINGS)
 
         if not os.path.isfile(self.input_path(file_name)):
-            utils.Debug.vprint("File {f} does not exist".format(f=file_name))
+            utils.Debug.vprint("File {f} does not exist".format(f=file_name), level=0)
 
         self._set_with_warning(attr_name, file_name)
 
@@ -261,8 +267,13 @@ class WorkflowBaseLoader(object):
 
         file_settings.update(kwargs)
 
-        # Load a dataframe
-        return pd.read_csv(self.input_path(filename), **file_settings)
+        # If is_hdf is in the file_settings, load with scanpy
+        if file_settings.pop('is_hdf', False):
+            from inferelator.preprocessing.io import read_10x_hdf5
+            return read_10x_hdf5(filename, **file_settings)
+        # Otherwise load with pandas
+        else:
+            return pd.read_csv(self.input_path(filename), **file_settings)
 
     def append_to_path(self, var_name, to_append):
         """
@@ -507,7 +518,7 @@ class WorkflowBase(WorkflowBaseLoader):
         """
         Register the multiprocessing controller if set and run .connect()
         """
-        if self.multiprocessing_controller is not None:
+        if self.multiprocessing_controller is not None and not MPControl.is_initialized:
             MPControl.set_multiprocess_engine(self.multiprocessing_controller)
         MPControl.connect()
 
