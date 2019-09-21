@@ -271,7 +271,7 @@ class WorkflowBaseLoader(object):
         # If is_hdf is in the file_settings, load with scanpy
         if file_settings.pop('is_hdf', False):
             from inferelator.preprocessing.io import read_10x_hdf5
-            return read_10x_hdf5(filename, **file_settings)
+            return read_10x_hdf5(self.input_path(filename), **file_settings)
         # Otherwise load with pandas
         else:
             return pd.read_csv(self.input_path(filename), **file_settings)
