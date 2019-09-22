@@ -24,13 +24,13 @@ def read_10x_hdf5(file_name, sparse=False, **kwargs):
     if sparse:
         data_frame = pd.DataFrame.sparse.from_spmatrix(ann_data.X.tocsc(),
                                                        index=ann_data.obs_names,
-                                                       columns=ann_data.var_names)
+                                                       columns=ann_data.var['gene_ids'])
 
         utils.Debug.vprint("Data processed into {sh} sparse DataFrame".format(sh=data_frame.shape))
     else:
         data_frame = pd.DataFrame(ann_data.X.todense(),
                                   index=ann_data.obs_names,
-                                  columns=ann_data.var_names)
+                                  columns=ann_data.var['gene_ids'])
 
         utils.Debug.vprint("Data processed into {sh} dense DataFrame".format(sh=data_frame.shape))
 
