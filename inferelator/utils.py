@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals, division
 
 import pandas as pd
+import pandas.api.types as pat
 import os
 
 from inferelator.default import SBATCH_VARS
@@ -249,10 +250,9 @@ class Validator(object):
         if allow_none and frame is None:
             return True
 
-        is_num = frame.applymap(lambda x: isinstance(x, (float, int))).sum()
-        is_feature_num = is_num.apply(lambda x: x == frame.shape[0])
+        is_feature_num = [pat.is_numeric_dtype(x) for x in frame.dtypes]
 
-        if is_feature_num.all():
+        if all(is_feature_num):
             return True
         else:
             bad_features = "\t".join(map(str, is_feature_num.index[is_feature_num].tolist()))
