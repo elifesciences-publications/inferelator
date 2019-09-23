@@ -250,12 +250,12 @@ class Validator(object):
         if allow_none and frame is None:
             return True
 
-        is_feature_num = [pat.is_numeric_dtype(x) for x in frame.dtypes]
+        is_feature_num = pd.Index([pat.is_numeric_dtype(x) for x in frame.dtypes])
 
-        if all(is_feature_num):
+        if is_feature_num.all():
             return True
         else:
-            bad_features = "\t".join(map(str, is_feature_num.index[is_feature_num].tolist()))
+            bad_features = "\t".join(map(str, frame.columns[~is_feature_num].tolist()))
             raise ValueError("Dataframe has non-numeric features: {f}".format(f=bad_features))
 
     @staticmethod
