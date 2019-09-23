@@ -369,15 +369,15 @@ class WorkflowBaseLoader(object):
         if self.use_no_prior and self.priors_data is not None:
             warnings.warn("The use_no_prior flag will be ignored because prior data exists")
         elif self.use_no_prior:
-            utils.Debug.vprint("A null prior is has been created", level=0)
             self.priors_data = self._create_null_prior(self.expression_matrix, self.tf_names)
+            utils.Debug.vprint("A null prior {sh} has been created".format(sh=self.priors_data.shape), level=0)
 
         # Create a null gold standard if the flag is set
         if self.use_no_gold_standard and self.gold_standard is not None:
             warnings.warn("The use_no_gold_standard flag will be ignored because gold standard data exists")
         elif self.use_no_gold_standard:
-            utils.Debug.vprint("A null gold standard has been created", level=0)
             self.gold_standard = self._create_null_prior(self.expression_matrix, self.tf_names)
+            utils.Debug.vprint("A null gs {sh} has been created".format(sh=self.gold_standard.shape), level=0)
 
         # Validate that some network information exists and has been loaded
         if self.priors_data is None and self.gold_standard is None:
@@ -412,7 +412,7 @@ class WorkflowBaseLoader(object):
         :param tf_names: list
         :return priors: pd.DataFrame
         """
-        return pd.DataFrame(0, index=expression_data.columns, columns=tf_names)
+        return pd.DataFrame(0, index=expression_data.index, columns=tf_names)
 
     @staticmethod
     def make_path_safe(path):
