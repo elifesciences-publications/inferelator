@@ -145,42 +145,41 @@ def tf_sqrt_data(expression_matrix, meta_data, **kwargs):
 
 def filter_genes_for_var(expression_matrix, meta_data, **kwargs):
     """
-    Filter out any genes which have a variance of 0 (the min and max are identical)
+    Filter out any genes which have a variance of 0 (the min and max are identical). Make all changes in-place.
     :param expression_matrix: pd.DataFrame
     :param meta_data: pd.DataFrame
     :return expression_matrix, meta_data: pd.DataFrame, pd.DataFrame
     """
     no_signal = (expression_matrix.max(axis=1) - expression_matrix.min(axis=1)) == 0
     utils.Debug.vprint("Filtering {gn} genes [Var = 0]".format(gn=no_signal.sum()), level=1)
-    return expression_matrix.loc[~no_signal, :], meta_data
+    expression_matrix.drop(expression_matrix.index[no_signal], inplace=True, axis=0)
 
 
 def filter_genes_for_count(expression_matrix, meta_data, count_minimum=None, check_for_scaling=True):
     """
     Filter out any genes which have a variance of 0 by calling filter_genes_for_var. Filter out any genes which don't
-    reach the minimum count (if count is not none)
+    reach the minimum count (if count is not none). Make all changes in-place
     :param expression_matrix: pd.DataFrame
     :param meta_data: pd.DataFrame
     :param count_minimum: num
         The minimum value per sample required to include any genes
     :param check_for_scaling: bool
         Check to see if the data has any negatives and throw an error if it does
-    :return expression_matrix, meta_data: pd.DataFrame, pd.DataFrame
     """
 
     # Remove any genes with no information
-    expression_matrix, meta_data = filter_genes_for_var(expression_matrix, meta_data)
+    filter_genes_for_var(expression_matrix, meta_data)
 
     if count_minimum is None:
-        return expression_matrix, meta_data
+        pass
     else:
-        if check_for_scaling and (expression_matrix < 0).sum().sum() > 0:
+        if check_for_scaling and expression_matrix.apply(lambda x: (x < 0).sum()).sum():
             raise ValueError("Negative values in the expression matrix. Count thresholding scaled data is unsupported.")
 
         keep_genes = expression_matrix.sum(axis=1) >= (count_minimum * expression_matrix.shape[1])
         utils.Debug.vprint("Filtering {gn} genes [Count]".format(gn=expression_matrix.shape[0] - keep_genes.sum()),
                            level=1)
-        return expression_matrix.loc[keep_genes, :], meta_data
+        expression_matrix.drop(expression_matrix.index[~keep_genes], inplace=True, axis=0)
 
 
 def process_normalize_args(**kwargs):

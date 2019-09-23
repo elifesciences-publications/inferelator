@@ -36,20 +36,22 @@ class SingleCellWorkflow(tfa_workflow.TFAWorkFlow):
 
         assert check.dataframe_is_numeric(self.expression_matrix)
 
-        self.expression_matrix, self.meta_data = single_cell.filter_genes_for_count(self.expression_matrix,
-                                                                                    self.meta_data,
-                                                                                    count_minimum=self.count_minimum)
+        single_cell.filter_genes_for_count(self.expression_matrix, self.meta_data, count_minimum=self.count_minimum)
 
-        if np.sum(~np.isfinite(self.expression_matrix.values), axis=None) > 0:
-            raise ValueError("NaN values are present prior to normalization in the expression matrix")
+        try:
+            check.dataframe_is_finite(self.expression_matrix)
+        except ValueError as err:
+            raise ValueError("NaN values are present prior to normalization in the expression matrix") from err
 
         if self.preprocessing_workflow is not None:
             for sc_func, sc_kwargs in self.preprocessing_workflow:
                 sc_kwargs['random_seed'] = self.random_seed
                 self.expression_matrix, self.meta_data = sc_func(self.expression_matrix, self.meta_data, **sc_kwargs)
 
-        if np.sum(~np.isfinite(self.expression_matrix.values), axis=None) > 0:
-            raise ValueError("NaN values have been introduced into the expression matrix by normalization")
+        try:
+            check.dataframe_is_finite(self.expression_matrix)
+        except ValueError as err:
+            raise ValueError("NaN values have been introduced into the expression matrix by normalization") from err
 
     def set_count_minimum(self, count_minimum=None):
         """
