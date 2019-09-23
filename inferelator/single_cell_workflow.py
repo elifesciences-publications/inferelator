@@ -29,13 +29,10 @@ class SingleCellWorkflow(tfa_workflow.TFAWorkFlow):
 
     def single_cell_normalize(self):
         """
-        Single cell normalization. Requires expression_matrix to be all numeric, and to be [N x G].
+        Single cell normalization. Requires expression_matrix to be all numeric, and to be [G x N].
         Executes all preprocessing workflow steps from the preprocessing_workflow list that's set by the
         add_preprocess_step() class function
         """
-
-        # Transpose the expression matrix from [G x N] to [N x G] for preprocessing
-        self.expression_matrix = utils.transpose_dataframe(self.expression_matrix)
 
         assert check.dataframe_is_numeric(self.expression_matrix)
 
@@ -53,9 +50,6 @@ class SingleCellWorkflow(tfa_workflow.TFAWorkFlow):
 
         if np.sum(~np.isfinite(self.expression_matrix.values), axis=None) > 0:
             raise ValueError("NaN values have been introduced into the expression matrix by normalization")
-
-        # Transpose the expression matrix from [N x G] to [G x N] for the rest of the workflow
-        self.expression_matrix = utils.transpose_dataframe(self.expression_matrix)
 
     def set_count_minimum(self, count_minimum=None):
         """

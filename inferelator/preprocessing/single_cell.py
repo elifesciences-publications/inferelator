@@ -27,10 +27,10 @@ def normalize_expression_to_one(expression_matrix, meta_data, **kwargs):
     utils.Debug.vprint('Normalizing UMI counts per cell ... ')
 
     # Get UMI counts for each cell
-    umi = expression_matrix.sum(axis=1)
+    umi = expression_matrix.sum(axis=0)
 
     # Divide each cell's raw count data by the total number of UMI counts for that cell
-    return expression_matrix.astype(float).divide(umi, axis=0), meta_data
+    return expression_matrix.astype(float).divide(umi, axis=1), meta_data
 
 
 def normalize_medians_for_batch(expression_matrix, meta_data, **kwargs):
@@ -48,7 +48,7 @@ def normalize_medians_for_batch(expression_matrix, meta_data, **kwargs):
     utils.Debug.vprint('Normalizing median counts between batches ... ')
 
     # Get UMI counts for each cell
-    umi = expression_matrix.sum(axis=1)
+    umi = expression_matrix.sum(axis=0)
 
     # Create a new dataframe with the UMI counts and the factor to batch correct on
     umi = pd.DataFrame({'umi': umi, batch_factor_column: meta_data[batch_factor_column]})
@@ -61,7 +61,7 @@ def normalize_medians_for_batch(expression_matrix, meta_data, **kwargs):
     umi = umi.join(median_umi, on=batch_factor_column, how="left", rsuffix="_mod")
 
     # Apply the correction factor to all the data
-    return expression_matrix.divide(umi['umi_mod'], axis=0), meta_data
+    return expression_matrix.divide(umi['umi_mod'], axis=1), meta_data
 
 
 def normalize_sizes_within_batch(expression_matrix, meta_data, **kwargs):
@@ -81,7 +81,7 @@ def normalize_sizes_within_batch(expression_matrix, meta_data, **kwargs):
     utils.Debug.vprint('Normalizing to median counts within batches ... ')
 
     # Get UMI counts for each cell
-    umi = expression_matrix.sum(axis=1)
+    umi = expression_matrix.sum(axis=0)
 
     # Create a new dataframe with the UMI counts and the factor to batch correct on
     umi = pd.DataFrame({'umi': umi, batch_factor_column: meta_data[batch_factor_column]})
@@ -94,7 +94,7 @@ def normalize_sizes_within_batch(expression_matrix, meta_data, **kwargs):
     umi['umi_mod'] = umi['umi'] / umi['umi_mod']
 
     # Apply the correction factor to all the data
-    return expression_matrix.divide(umi['umi_mod'], axis=0), meta_data
+    return expression_matrix.divide(umi['umi_mod'], axis=1), meta_data
 
 
 def log10_data(expression_matrix, meta_data, **kwargs):
@@ -150,9 +150,9 @@ def filter_genes_for_var(expression_matrix, meta_data, **kwargs):
     :param meta_data: pd.DataFrame
     :return expression_matrix, meta_data: pd.DataFrame, pd.DataFrame
     """
-    no_signal = (expression_matrix.max(axis=0) - expression_matrix.min(axis=0)) == 0
+    no_signal = (expression_matrix.max(axis=1) - expression_matrix.min(axis=1)) == 0
     utils.Debug.vprint("Filtering {gn} genes [Var = 0]".format(gn=no_signal.sum()), level=1)
-    return expression_matrix.loc[:, ~no_signal], meta_data
+    return expression_matrix.loc[~no_signal, :], meta_data
 
 
 def filter_genes_for_count(expression_matrix, meta_data, count_minimum=None, check_for_scaling=True):
@@ -177,10 +177,10 @@ def filter_genes_for_count(expression_matrix, meta_data, count_minimum=None, che
         if check_for_scaling and (expression_matrix < 0).sum().sum() > 0:
             raise ValueError("Negative values in the expression matrix. Count thresholding scaled data is unsupported.")
 
-        keep_genes = expression_matrix.sum(axis=0) >= (count_minimum * expression_matrix.shape[0])
+        keep_genes = expression_matrix.sum(axis=1) >= (count_minimum * expression_matrix.shape[0])
         utils.Debug.vprint("Filtering {gn} genes [Count]".format(gn=expression_matrix.shape[1] - keep_genes.sum()),
                            level=1)
-        return expression_matrix.loc[:, keep_genes], meta_data
+        return expression_matrix.loc[keep_genes, :], meta_data
 
 
 def process_normalize_args(**kwargs):
