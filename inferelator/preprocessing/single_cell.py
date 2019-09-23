@@ -177,8 +177,8 @@ def filter_genes_for_count(expression_matrix, meta_data, count_minimum=None, che
         if check_for_scaling and (expression_matrix < 0).sum().sum() > 0:
             raise ValueError("Negative values in the expression matrix. Count thresholding scaled data is unsupported.")
 
-        keep_genes = expression_matrix.sum(axis=1) >= (count_minimum * expression_matrix.shape[0])
-        utils.Debug.vprint("Filtering {gn} genes [Count]".format(gn=expression_matrix.shape[1] - keep_genes.sum()),
+        keep_genes = expression_matrix.sum(axis=1) >= (count_minimum * expression_matrix.shape[1])
+        utils.Debug.vprint("Filtering {gn} genes [Count]".format(gn=expression_matrix.shape[0] - keep_genes.sum()),
                            level=1)
         return expression_matrix.loc[keep_genes, :], meta_data
 
