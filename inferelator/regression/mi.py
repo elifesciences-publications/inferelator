@@ -98,16 +98,23 @@ def mutual_information(X, Y, bins, logtype=DEFAULT_LOG_TYPE, temp_dir=None):
     X = X.values
     Y = Y.values
 
-    # Discretize the input matrixes
-    X = _make_array_discrete(X.transpose(), bins, axis=0)
-    Y = _make_array_discrete(Y.transpose(), bins, axis=0)
+    # Discretize the input matrixes in-place
+    _make_array_discrete(X, bins, axis=0)
+    _make_array_discrete(Y, bins, axis=0)
+
+    # Build an integer view from the binned data
+    X = X.astype(np.dtype('int8'))
+    Y = Y.astype(np.dtype('int8'))
 
     # Build the MI matrix
     if MPControl.is_dask():
         from inferelator.distributed.dask_functions import build_mi_array_dask
-        return pd.DataFrame(build_mi_array_dask(X, Y, bins, logtype=logtype), index=mi_r, columns=mi_c)
+        return pd.DataFrame(build_mi_array_dask(X, Y, bins, logtype=logtype),
+                            index=mi_r,
+                            columns=mi_c)
     else:
-        return pd.DataFrame(build_mi_array(X, Y, bins, logtype=logtype, temp_dir=temp_dir), index=mi_r,
+        return pd.DataFrame(build_mi_array(X, Y, bins, logtype=logtype, temp_dir=temp_dir),
+                            index=mi_r,
                             columns=mi_c)
 
 
@@ -115,9 +122,9 @@ def build_mi_array(X, Y, bins, logtype=DEFAULT_LOG_TYPE, temp_dir=None):
     """
     Calculate MI into an array
 
-    :param X: np.ndarray (n x m1)
+    :param X: np.ndarray (m1 x n)
         Discrete array of bins
-    :param Y: np.ndarray (n x m2)
+    :param Y: np.ndarray (m2 x n)
         Discrete array of bins
     :param bins: int
         The total number of bins that were used to make the arrays discrete
@@ -129,13 +136,13 @@ def build_mi_array(X, Y, bins, logtype=DEFAULT_LOG_TYPE, temp_dir=None):
         Returns the mutual information array
     """
 
-    m1, m2 = X.shape[1], Y.shape[1]
+    m1, m2 = X.shape[0], Y.shape[0]
 
     # Define the function which calculates MI for each variable in X against every variable in Y
     def mi_make(i):
         level = 2 if i % 1000 == 0 else 3
         utils.Debug.allprint("Mutual Information Calculation [{i} / {total}]".format(i=i, total=m1), level=level)
-        return [_calc_mi(_make_table(X[:, i], Y[:, j], bins), logtype=logtype) for j in range(m2)]
+        return [_calc_mi(_make_table(X[i, :], Y[j, :], bins), logtype=logtype) for j in range(m2)]
 
     # Send the MI build to the multiprocessing controller
     mi_list = MPControl.map(mi_make, range(m1), tmp_file_path=temp_dir)
@@ -176,9 +183,13 @@ def calc_mixed_clr(mi, mi_bg):
 
 def _make_array_discrete(array, num_bins, axis=0):
     """
-    Applies _make_discrete to a 2d array
+    Applies _make_discrete to a 2d array in-place
     """
-    return np.apply_along_axis(_make_discrete, arr=array, axis=axis, num_bins=num_bins)
+    for i in range(array.shape[axis]):
+        if axis == 0:
+            array[i, :] = _make_discrete(array[i, :], num_bins)
+        elif axis == 1:
+            array[:, i] = _make_discrete(array[:, i], num_bins)
 
 
 def _make_discrete(arr_vec, num_bins):
@@ -209,7 +220,7 @@ def _make_discrete(arr_vec, num_bins):
         return np.floor((x - arr_min) / (arr_max - arr_min + eps_mod) * num_bins)
 
     # Apply the function to every value in the vector
-    return _disc_func(arr_vec).astype(np.dtype(int))
+    return _disc_func(arr_vec)
 
 
 def _make_table(x, y, num_bins):
