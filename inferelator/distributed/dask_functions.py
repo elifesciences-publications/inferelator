@@ -195,10 +195,11 @@ def build_mi_array_dask(X, Y, bins, logtype, is_restart=False):
     """
     Calculate MI into an array with dask (the naive map is very inefficient)
 
-    :param X: np.ndarray (n x m1)
+    :param X: np.ndarray (m1 x n)
         Discrete array of bins
-    :param Y: np.ndarray (n x m2)
-        Discrete array of bins
+    :param Y: np.ndarray (m2 x n)
+        Discrete array of bins.
+        Pass the smaller array as Y (it will be fully copied to workers)
     :param bins: int
         The total number of bins that were used to make the arrays discrete
     :param logtype: np.log func
@@ -214,10 +215,10 @@ def build_mi_array_dask(X, Y, bins, logtype, is_restart=False):
     # Get a reference to the Dask controller
     DaskController = MPControl.client
 
-    m1, m2 = X.shape[1], Y.shape[1]
+    m1, m2 = X.shape[0], Y.shape[0]
 
     def mi_make(i, x, y):
-        return i, [_calc_mi(_make_table(x, y[:, j], bins), logtype=logtype) for j in range(m2)]
+        return i, [_calc_mi(_make_table(x, y[j, :], bins), logtype=logtype) for j in range(m2)]
 
     # Scatter Y to workers and keep track as Futures
     [scatter_y] = DaskController.client.scatter([Y], broadcast=True, hash=False)
@@ -228,7 +229,7 @@ def build_mi_array_dask(X, Y, bins, logtype, is_restart=False):
         utils.Debug.vprint("Scattering timeout during mutual information. Dask workers may be sick", level=0)
 
     # Build an asynchronous list of Futures for each calculation of mi_make
-    future_list = [DaskController.client.submit(mi_make, i, X[:, i], scatter_y, pure=False) for i in range(m1)]
+    future_list = [DaskController.client.submit(mi_make, i, X[i, :], scatter_y, pure=False) for i in range(m1)]
 
     # Collect results as they finish instead of waiting for all workers to be done
     try:
